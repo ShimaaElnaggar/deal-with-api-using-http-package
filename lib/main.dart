@@ -1,4 +1,4 @@
-import 'package:deal_with_api_using_http_package/home.dart';
+import 'package:deal_with_api_using_http_package/views/posts_view.dart';
 import 'package:flutter/material.dart';
 
 void main() {
@@ -17,7 +17,8 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const HomeView(),
+
+      home: const PostsView(),
     );
   }
 }
