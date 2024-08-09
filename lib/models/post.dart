@@ -10,6 +10,13 @@ class Post {
       required this.title,
       required this.body});
 
+  Map<String, dynamic> toJson() => {
+        'userId': userId,
+        'id': id,
+        'title': title,
+        'body': body,
+      };
+
   factory Post.fromJson(Map<String, dynamic> json) {
     return Post(
       userId: json['userId'],

@@ -1,12 +1,8 @@
-import 'dart:async';
-
-import 'package:deal_with_api_using_http_package/views/all_comments_view.dart';
-import 'package:deal_with_api_using_http_package/services/post_services.dart';
-
+import 'package:deal_with_api_using_http_package/views/post_details_view.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../models/comment.dart';
-import '../models/post.dart';
+import '../bloc/posts bloc/posts_bloc.dart';
 
 class PostsView extends StatefulWidget {
   const PostsView({super.key});
@@ -16,118 +12,80 @@ class PostsView extends StatefulWidget {
 }
 
 class _PostsViewState extends State<PostsView> {
-  late Future<List<Post>> posts;
-int postId = 0;
+  int selectedCardIndex = -1;
   @override
   void initState() {
     super.initState();
-    posts = PostService.fetchPosts();
+    activateBloc();
   }
 
-  Future<void> loadCommentsForPost(int postId) async {
-    try {
-      List<dynamic> commentsData = await PostService().fetchPostComments(postId);
-      List<Comment> comments = commentsData.map((item) => Comment.fromJson(item)).toList();
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: Text('Comments for Post $postId' , style: const TextStyle(fontWeight: FontWeight.bold),),
-            content: SizedBox(
-              height: 500, // Adjust height as needed
-              width: 300, // Adjust width as needed
-              child: ListView.builder(
-                itemCount: comments.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(comments[index].name, style: TextStyle(color: Colors.purple.shade200,fontWeight: FontWeight.w700),),
-                    subtitle: Text(comments[index].body),
-                  );
-                },
-              ),
-            ),
-          );
-        },
-      );
-    } catch (e) {
-      print('Error loading comments: $e');
-    }
-  }
-
-  Future<void> loadAllPostsCommentsByPostId( int postId) async {
-    try {
-      List<dynamic> commentsData = await PostService().fetchCommentsByPostId(postId);
-      List<Comment> comments = commentsData.map((item) => Comment.fromJson(item)).toList();
-     if(mounted){
-       Navigator.of(context).push(
-         MaterialPageRoute(builder: (context) => AllComments( postId: postId, comments: comments)),
-       );
-     }
-    } catch (e) {
-      print('Error loading comments by post ID: $e');
-    }
-  }
-
-
-  @override
-  void dispose() {
-    super.dispose();
+  void activateBloc() {
+    context.read<PostsBloc>().add(FetchPostsEvent());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.purple.shade200,
-        title: const Text('Show Data'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.comment),
-            onPressed: () async {
-              if (postId != 0) {
-                await loadAllPostsCommentsByPostId(postId);
-              } else {
-                print('No post selected');
-              }
-            },
-          ),
-        ],
+        title: const Center(child: Text('Posts')),
       ),
-      body: FutureBuilder<List<Post>>(
-          future: posts,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            if (snapshot.hasError) {
-              return Text('Error: ${snapshot.error.toString()}');
-            }
+      body: BlocBuilder<PostsBloc, PostsState>(
+        builder: (context, state) {
+          if (state is PostsLoadedState) {
             return ListView.builder(
-              itemCount: snapshot.data!.length,
+              itemCount: state.posts.length,
               itemBuilder: (context, index) {
+                final post = state.posts[index];
                 return Padding(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(15.0),
                   child: Card(
-                    color: Colors.purple.shade100,
+                    color: selectedCardIndex == index
+                        ? Colors.purple.shade200
+                        : Colors.white,
+                    surfaceTintColor: Colors.white,
+                    shadowColor: Colors.black,
+                    elevation: 5.0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
                     child: ListTile(
-                      title: Text(
-                        snapshot.data![index].title,
-                        style: TextStyle(
-                            color: Colors.purple.shade200,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 22),
+                      title: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Text(
+                          post.title,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
                       ),
-                      subtitle: Text(snapshot.data![index].body),
+                      subtitle: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        child: Text(post.body,
+                            style: const TextStyle(
+                              color: Colors.black54,
+                            )),
+                      ),
                       onTap: () {
-                        int postId = snapshot.data![index].id;
-                        loadCommentsForPost(postId);
+                        setState(() {
+                          selectedCardIndex = index;
+                        });
+                        Navigator.of(context).push(MaterialPageRoute(
+                            builder: (context) => PostDetailsView(post: post)));
                       },
                     ),
                   ),
                 );
               },
             );
-          }),
+          } else if (state is PostsErrorState) {
+            //print(state.errorMessage);
+            return Center(
+                child: Text('Error fetching posts: ${state.errorMessage}'));
+          } else {
+            return const Center(child: CircularProgressIndicator());
+          }
+        },
+      ),
     );
   }
 }
